@@ -28,6 +28,13 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // ✅ appAuthRedirectScheme 값을 airline으로 설정 (필수!!)
+        manifestPlaceholders = [
+                appAuthRedirectScheme: "airline",
+                applicationName: "com.example.airline.MainActivity"
+        ]
+
     }
 
     buildTypes {
