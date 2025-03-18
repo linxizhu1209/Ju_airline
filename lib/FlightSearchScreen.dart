@@ -1,8 +1,12 @@
 import 'dart:convert';
+import 'package:airline/FlightSchedulePage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:intl/intl.dart';
+
+import 'ChatPage.dart';
+import 'config/Config.dart';
 
 class FlightSearchScreen extends StatefulWidget {
   const FlightSearchScreen({super.key});
@@ -19,7 +23,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   DateTime? returnDate;
   int passengers = 1;
 
+  List<Map<String, dynamic>> airports = [];
   List<String> cities = [];
+  List<String> arrivalCities = [];
 
   @override
   void initState() {
@@ -28,14 +34,55 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Future<void> fetchAirports() async {
-    final response = await http.get(Uri.parse("http://10.0.2.2:8081/airport/list"));
+    final response = await http.get(
+        Uri.parse("${Config.baseUrl}/airport/list"));
     if (response.statusCode == 200) {
       List<dynamic> data = json.decode(response.body);
+      print("🔹 데이터: $data");
       setState(() {
-        cities = data.map((airport) => airport['city'].toString()).toSet().toList();
+        airports = data.map((airport) =>
+        {
+          'id': airport['airportId'],
+          'city': airport['city']
+        }).toList();
+        cities =
+            data.map((airport) => airport['city'].toString()).toSet().toList();
       });
+      print("🔹 공항 데이터 로드 완료: $airports");
     } else {
       throw Exception("Failed to load airports");
+    }
+  }
+
+  /// 출발지를 선택하면 도착지 목록을 가져오기
+  Future<void> fetchArrivalCities(String departureCity) async {
+    print("airports $airports");
+    final departureAirport = airports.firstWhere((airport) =>
+    airport['city'] == departureCity, orElse: () => {});
+
+    if (departureAirport.isEmpty) {
+      print("❌ 출발 공항을 찾을 수 없음: $departureCity");
+      return;
+    }
+
+
+    if (departureAirport.isNotEmpty) {
+      final String departureAirportId = departureAirport['id'];
+      print("✅ 선택한 출발 공항 ID: $departureAirportId");
+
+      final response = await http.get(Uri.parse(
+          "${Config.baseUrl}/flight/available-destination?departureAirportId=$departureAirportId"));
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(response.body);
+        print("🔹 API 응답 데이터: $data");
+        setState(() {
+          arrivalCities = data.map((airport) => airport['city'].toString())
+              .toSet()
+              .toList();
+        });
+      } else {
+        throw Exception("Fail");
+      }
     }
   }
 
@@ -77,27 +124,31 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Flight Booking',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(icon: const Icon(Icons.support_agent,size:28),
-                      onPressed: (){
-                        //todo
-                      },)
+                      const Text(
+                        'Flight Booking',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(icon: const Icon(Icons.support_agent,
+                              size: 28),
+                            onPressed: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context)=> ChatPage()),
+                              );
+                            },)
+                        ],
+                      ),
                     ],
                   ),
-                  ],
-                    ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -114,36 +165,38 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                     ),
                     child: Column(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                decoration: const InputDecoration(labelText: 'From'),
-                                value: departureCity,
-                                items: cities.map((city) {
-                                  return DropdownMenuItem(
-                                    value: city,
-                                    child: Text(city),
-                                  );
-                                }).toList(),
-                                onChanged: (value) => setState(() => departureCity = value!),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                decoration: const InputDecoration(labelText: 'To'),
-                                value: arrivalCity,
-                                items: cities.map((city) {
-                                  return DropdownMenuItem(
-                                    value: city,
-                                    child: Text(city),
-                                  );
-                                }).toList(),
-                                onChanged: (value) => setState(() => arrivalCity = value!),
-                              ),
-                            ),
-                          ],
+                        DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(labelText: 'From'),
+                          value: departureCity,
+                          hint: const Text("출발지"),
+                          items: cities.map((city) {
+                            return DropdownMenuItem(
+                              value: city,
+                              child: Text(city),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              departureCity = value;
+                              arrivalCity = null;
+                              arrivalCities.clear();
+                            });
+                            fetchArrivalCities(value!);
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(labelText: 'To'),
+                          value: arrivalCity,
+                          items: arrivalCities.map((city) {
+                            return DropdownMenuItem(
+                              value: city,
+                              child: Text(city),
+                            );
+                          }).toList(),
+                          onChanged: (value) =>
+                              setState(() => arrivalCity = value),
+                          disabledHint: const Text("출발지를 먼저 선택하세요"),
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -152,11 +205,13 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                               child: GestureDetector(
                                 onTap: () => _selectDate(context, true),
                                 child: InputDecorator(
-                                  decoration: const InputDecoration(labelText: 'Departure Date'),
+                                  decoration: const InputDecoration(
+                                      labelText: 'Departure Date'),
                                   child: Text(
                                     departureDate == null
                                         ? 'Select Date'
-                                        : DateFormat('yyyy-MM-dd').format(departureDate!),
+                                        : DateFormat('yyyy-MM-dd').format(
+                                        departureDate!),
                                   ),
                                 ),
                               ),
@@ -168,11 +223,13 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                                 child: GestureDetector(
                                   onTap: () => _selectDate(context, false),
                                   child: InputDecorator(
-                                    decoration: const InputDecoration(labelText: 'Return Date'),
+                                    decoration: const InputDecoration(
+                                        labelText: 'Return Date'),
                                     child: Text(
                                       returnDate == null
                                           ? 'Select Date'
-                                          : DateFormat('yyyy-MM-dd').format(returnDate!),
+                                          : DateFormat('yyyy-MM-dd').format(
+                                          returnDate!),
                                     ),
                                   ),
                                 ),
@@ -181,15 +238,18 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<int>(
-                          decoration: const InputDecoration(labelText: 'Passengers'),
+                          decoration: const InputDecoration(
+                              labelText: 'Passengers'),
                           value: passengers,
-                          items: List.generate(10, (index) => index + 1).map((num) {
+                          items: List.generate(10, (index) => index + 1).map((
+                              num) {
                             return DropdownMenuItem(
                               value: num,
                               child: Text('$num'),
                             );
                           }).toList(),
-                          onChanged: (value) => setState(() => passengers = value!),
+                          onChanged: (value) =>
+                              setState(() => passengers = value!),
                         ),
                         const SizedBox(height: 20),
                         SizedBox(
@@ -202,10 +262,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
-                            onPressed: () {},
+                            onPressed: searchFlights,
                             child: const Text(
                               'Search Flights',
-                              style: TextStyle(color: Colors.white, fontSize: 16),
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 16),
                             ),
                           ),
                         ),
@@ -221,5 +282,44 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       // bottomNavigationBar: BaseScreen(selectedIndex: -1),
     );
   }
+
+  void searchFlights() async {
+    if (departureCity == null || arrivalCity == null) {
+      print("❌ 출발지와 도착지를 선택하세요!");
+      return;
+    }
+    final departureAirport = airports.firstWhere((airport) =>
+    airport['city'] == departureCity, orElse: () => {});
+    final arrivalAirport = airports.firstWhere((airport) =>
+    airport['city'] == arrivalCity, orElse: () => {});
+
+    if (departureAirport.isEmpty || arrivalAirport.isEmpty) {
+      print("공항 정보를 찾을 수 없습니다!");
+      return;
+    }
+
+    final String departureAirportId = departureAirport['id'];
+    final String arrivalAirportId = arrivalAirport['id'];
+
+    final response = await http.get(Uri.parse(
+        "${Config.baseUrl}/flight/schedule?departureAirportId=$departureAirportId&arrivalAirportId=$arrivalAirportId"));
+
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      print("검색된 항공편: $data");
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) =>
+            FlightSchedulePage(schedules: data.cast<Map<String, dynamic>>()),
+        ),
+      );
+    } else {
+      print("항공편 검색 실패");
+    }
+  }
 }
+
+
+
 

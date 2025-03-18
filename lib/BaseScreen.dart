@@ -1,3 +1,4 @@
+import 'package:airline/FlightSearchScreen.dart';
 import 'package:airline/LoginPage.dart';
 import 'package:airline/NoticePage.dart';
 import 'package:airline/main.dart';
@@ -16,7 +17,7 @@ class BaseScreen extends StatefulWidget {
 
 class _BaseScreenState extends State<BaseScreen> {
   final List<Widget> _screens = [
-    MainScreen(),
+    FlightSearchScreen(),
     LoginPage(),
     NoticePage(),
   ];
@@ -42,8 +43,8 @@ class _BaseScreenState extends State<BaseScreen> {
           onTap: _onItemTapped,
           items: [
             BottomNavigationBarItem(
-                icon: Icon(Icons.home),
-                label: '홈',
+                icon: Icon(Icons.flight_takeoff),
+                label: '항공 검색',
             ),
             BottomNavigationBarItem(
                 icon: Icon(Icons.login),
