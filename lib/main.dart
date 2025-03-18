@@ -1,17 +1,42 @@
+import 'dart:async';
+
 import 'package:airline/BaseScreen.dart';
 import 'package:airline/FlightSearchScreen.dart';
 import 'package:airline/ReservationLookupScreen.dart';
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'LoginPage.dart';
-import 'NoticePage.dart';
 
-void main() {
+void main() async {
+  await dotenv.load();
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final AppLinks _appLinks;
+
+  @override
+  void initState(){
+    super.initState();
+    _appLinks = AppLinks();
+    _initDeepLinkListener();
+  }
+
+  void _initDeepLinkListener(){
+    _appLinks.uriLinkStream.listen((Uri? uri){
+      if(uri != null && uri.toString() == "myapp://home"){
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const MainScreen()));
+      }
+    });
+  }
 
   // This widget is the root of your application.
   @override
