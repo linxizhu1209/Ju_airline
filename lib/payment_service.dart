@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'package:airline/ReservationFailurePage.dart';
 import 'package:airline/ReservationSuccessPage.dart';
+import 'package:airline/utils/secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'config/Config.dart';
 
 class PaymentService {
+
+  static final SecureStorage _secureStorage = SecureStorage();
 
   static Future<int?> createFlightOrder({
     required String tossOrderId,
@@ -15,6 +18,15 @@ class PaymentService {
     required double totalPrice,
 }) async {
     final url = Uri.parse("${Config.baseUrl}/order/flight");
+
+    final userInfo = await _secureStorage.getUserInfo();
+    final String? userEmail = userInfo?['email'];
+
+    if(userEmail == null){
+      print("주문 실패! 로그인된 사용자를 찾을 수 없습니다!");
+      return null;
+    }
+
     final response = await http.post(
         url,
         headers: { "Content-Type": "application/json"},
@@ -24,6 +36,7 @@ class PaymentService {
             "flightScheduleId": flightScheduleId,
             "quantity": quantity,
             "totalPrice": totalPrice,
+            "userEmail": userEmail,
           }
         ),
     );
