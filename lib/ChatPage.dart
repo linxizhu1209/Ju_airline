@@ -33,6 +33,12 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
 
+      if(requestType == "상담사와 연결하기") {
+        // todo 유저부분을 로그인한 유저를 가져오도록
+        _chatService.sendChatMessage("sender", requestType);
+        return;
+      }
+
 
       _chatService.sendRequest(requestType).then((responseMessage){
         setState(() {

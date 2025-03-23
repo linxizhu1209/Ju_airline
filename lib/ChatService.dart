@@ -24,4 +24,26 @@ class ChatService {
         return "네트워크 오류: ${e.toString()}";
       }
     }
+
+    Future<void> sendChatMessage(String sender, String message) async {
+      try {
+        final response = await http.post(
+          Uri.parse("$serverUrl/send"),
+          headers: {"Content-Type" : "application/json"},
+          body: jsonEncode({
+            "sender": sender,
+            "message": message,
+            "timestamp": DateTime.now().toString()
+          }),
+        );
+        if(response.statusCode == 200){
+          print("메시지 전송 성공: ${response.body}");
+        } else {
+          print("메시지 전송 실패: ${response.statusCode} - ${response.body}");
+        }
+      } catch (e) {
+        print("네트워크 오류: $e");
+      }
+    }
+
   }
