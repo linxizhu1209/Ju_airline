@@ -2,8 +2,13 @@ import 'package:airline/BookingPage.dart';
 import 'package:flutter/material.dart';
 
 import 'ChatService.dart';
+import 'models/ChatRoom.dart';
 
 class ChatPage extends StatefulWidget {
+  final ChatRoom chatRoom;
+
+  const ChatPage({Key? key, required this.chatRoom}) : super(key: key);
+
 
   @override
   _ChatPageState createState() => _ChatPageState();
@@ -34,8 +39,13 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       if(requestType == "상담사와 연결하기") {
-        // todo 유저부분을 로그인한 유저를 가져오도록
-        _chatService.sendChatMessage("sender", requestType);
+        setState(() {
+          messages.add({
+            "text": "상담사와 연결중입니다. 내용을 입력해주세요.",
+            "isUser": false
+          });
+          isChatInputVisible = true;
+        });
         return;
       }
 

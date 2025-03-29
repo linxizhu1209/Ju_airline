@@ -33,4 +33,8 @@ class SecureStorage {
     }
     return null;
   }
+
+  Future<void> deleteUser() async {
+    await _storage.delete(key: "user_info");
+  }
 }

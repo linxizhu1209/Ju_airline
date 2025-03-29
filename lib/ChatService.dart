@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:airline/config/Config.dart';
 import 'package:http/http.dart' as http;
 
+import 'models/ChatRoom.dart';
+
 class ChatService {
   final String serverUrl = "${Config.baseUrl}/chat";
-    // final String serverUrl = "http://10.0.2.2:8081/chat";
 
     Future<String> sendRequest(String requestType) async {
       try {
@@ -13,6 +14,7 @@ class ChatService {
           headers: {"Content-Type": "application/json"},
           body: jsonEncode({"requestType": requestType}),
         );
+
 
         if(response.statusCode == 200){
           final responseData = jsonDecode(response.body);
@@ -43,6 +45,31 @@ class ChatService {
         }
       } catch (e) {
         print("네트워크 오류: $e");
+      }
+    }
+
+    Future<List<ChatRoom>> getChatRooms() async {
+        final response = await http.get(
+          Uri.parse("${Config.baseUrl}/chat/admin/chatrooms"),
+        );
+        if(response.statusCode == 200){
+          List<dynamic> data = jsonDecode(response.body);
+          return data.map((e)=> ChatRoom.fromJson(e)).toList();
+        } else {
+          print("채팅 목록 불러오기 실패: ${response.statusCode}");
+          throw Exception("Failed to load chat rooms");
+        }
+    }
+
+    static Stream<int> getUnreadChatCountStream() async* {
+      while(true){
+        final response = await http.get(Uri.parse("${Config.baseUrl}/unreadCount"));
+        if(response.statusCode == 200){
+          yield int.parse(response.body);
+        } else {
+          yield 0;
+        }
+        await Future.delayed(Duration(seconds: 2));
       }
     }
 

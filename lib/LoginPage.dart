@@ -1,6 +1,7 @@
 
 import 'dart:math';
 
+import 'package:airline/admin_login_page.dart';
 import 'package:airline/login_service.dart';
 import 'package:airline/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
@@ -41,6 +42,19 @@ class LoginPage extends StatelessWidget {
               onPressed: authProvider.loginWithGoogle,
               child: Text("Login with Google"),
             ),
+            SizedBox(height: 10),
+            GestureDetector(
+              onTap: (){
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AdminLoginPage()),
+                );
+              },
+              child: Text(
+                "관리자로 로그인",
+                style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+              ),
+            )
           ],
         ),
       ),
