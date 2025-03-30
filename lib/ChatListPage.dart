@@ -2,6 +2,7 @@
 import 'package:airline/ChatPage.dart';
 import 'package:airline/ChatService.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'models/ChatRoom.dart';
 
@@ -52,10 +53,11 @@ class _ChatListPageState extends State<ChatListPage> {
               itemCount: chatRooms.length,
               itemBuilder: (context, index) {
                 final room = chatRooms[index];
+                final formattedTime = DateFormat('MM-dd HH:mm').format(DateTime.parse(room.lastTimestamp));
                 return ListTile(
                   title: Text(room.userName),
                   subtitle: Text("마지막 메시지: ${room.lastMessage}"),
-                  trailing: Text("시간: ${room.lastTimestamp}"),
+                  trailing: Text(formattedTime),
                   onTap: () {
                     Navigator.push(
                       context,

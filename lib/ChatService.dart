@@ -35,7 +35,7 @@ class ChatService {
           body: jsonEncode({
             "sender": sender,
             "message": message,
-            "timestamp": DateTime.now().toString()
+            "timestamp": DateTime.now().toIso8601String()
           }),
         );
         if(response.statusCode == 200){

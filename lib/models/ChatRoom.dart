@@ -11,9 +11,9 @@ class ChatRoom {
 
   factory ChatRoom.fromJson(Map<String, dynamic> json){
     return ChatRoom(
-        userName: json['userName'] ?? 'Unknown',
+        userName: json['sender'] ?? 'Unknown',
         lastMessage: json['lastMessage'] ?? 'No message',
-        lastTimestamp: json['lastTimestamp'] ?? 'Unknown',
+        lastTimestamp: json['lastMessageTime'] ?? 'Unknown',
     );
   }
 }

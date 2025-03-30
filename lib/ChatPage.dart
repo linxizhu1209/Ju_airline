@@ -1,5 +1,8 @@
 import 'package:airline/BookingPage.dart';
+import 'package:airline/ChatInputField.dart';
+import 'package:airline/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'ChatService.dart';
 import 'models/ChatRoom.dart';
@@ -16,6 +19,7 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final ChatService _chatService = ChatService();
+  bool isChatInputVisible = false;
 
   List<Map<String, dynamic>> messages = [
     {
@@ -57,23 +61,26 @@ class _ChatPageState extends State<ChatPage> {
       });
     }
 
+    void handleMessageSend(String message){
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final sender = authProvider.userName;
+
+      if(sender == null){
+        print("로그인된 유저x");
+        return;
+      }
+
+      _chatService.sendChatMessage(sender, message);
+      setState(() {
+        messages.add({"text": message, "isUser":true});
+      });
+    }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("문의하기"),
-        leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-        ),
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.info_outline),
-              onPressed: () {} ,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -82,13 +89,40 @@ class _ChatPageState extends State<ChatPage> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    if(message.containsKey("buttons")) {
-                      return buttonBubble(message["text"],message["buttons"]);
-                    }
-                    return chatBubble(message["text"], message["isUser"]);
+                    return Column(
+                      crossAxisAlignment: message["isUser"]
+                      ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: message["isUser"]? Colors.blue : Colors.grey,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            message["text"],
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        if(message.containsKey("buttons"))
+                          Wrap(
+                            spacing: 8,
+                            children: List<Widget>.generate(
+                              message["buttons"].length,
+                                (btnIndex) => ElevatedButton(
+                                    onPressed: ()=> handleUserSelection(message["buttons"][btnIndex]),
+                                    child: Text(message["buttons"][btnIndex]),
+                                ),
+                            ),
+                          ),
+                      ],
+                    );
                   },
               ),
           ),
+          if(isChatInputVisible)
+            ChatInputField(onSend: handleMessageSend),
         ],
       ),
     );
