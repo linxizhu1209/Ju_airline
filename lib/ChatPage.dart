@@ -2,6 +2,7 @@ import 'package:airline/BookingPage.dart';
 import 'package:airline/ChatInputField.dart';
 import 'package:airline/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 
 import 'ChatService.dart';
@@ -11,7 +12,7 @@ class ChatPage extends StatefulWidget {
   final ChatRoom chatRoom;
 
   const ChatPage({Key? key, required this.chatRoom}) : super(key: key);
-
+  
 
   @override
   _ChatPageState createState() => _ChatPageState();
@@ -20,62 +21,120 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final ChatService _chatService = ChatService();
   bool isChatInputVisible = false;
+  String? _roomId;
+  List<Map<String, dynamic>> messages = [];
+  @override
+  void dispose() {
+    _chatService.stompClient?.deactivate();
+    super.dispose();
+  }
 
-  List<Map<String, dynamic>> messages = [
-    {
-      "text": "문의 사항을 선택해주세요.",
-      "buttons": ["예약 현황 확인", "상담사와 연결하기"],
-      "isUser": false
-    },
-  ];
-
-    void handleUserSelection(String requestType){
-      setState(() {
-        messages.add({"text": requestType, "isUser": true});
-      });
-
-      if(requestType == "예약 현황 확인"){
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context)=> BookingPage()),
-        );
-        return;
-      }
-
-      if(requestType == "상담사와 연결하기") {
-        setState(() {
-          messages.add({
-            "text": "상담사와 연결중입니다. 내용을 입력해주세요.",
-            "isUser": false
-          });
-          isChatInputVisible = true;
-        });
-        return;
-      }
-
-
-      _chatService.sendRequest(requestType).then((responseMessage){
-        setState(() {
-          messages.add({"text": responseMessage, "isUser":false});
-        });
-      });
-    }
-
-    void handleMessageSend(String message){
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final sender = authProvider.userName;
+      final sender = widget.chatRoom.userName; // 여기 이거 userName말고, 채팅방 당사자 이름
+      _roomId = _chatService.generateRoomId(sender!); // 또는 widget.chatRoom.roomId
+      final loginUser = authProvider.userName;
+      /*
+      1. roomId 가 이미 존재하는지 서버에 확인 요청 (이미 오늘 문의기록있는지)
+       */
+      _chatService.checkRoomExists(_roomId!).then((exists) {
+        print("sender $sender");
+        if (exists) {
+          /*
+          2. 방이 존재한다면, 이전 문의기록을 불러오고, stomp 연결
+           */
+          _chatService.getMessagesForRoom(_roomId!).then((previousMessage) {
+            setState(() {
+              messages.addAll(previousMessage.map((msg) {
+                return {
+                  "text": msg["message"],
+                  "isUser": msg["sender"] == loginUser
+                };
+              }));
+              isChatInputVisible = true;
+            });
 
-      if(sender == null){
-        print("로그인된 유저x");
-        return;
+            _chatService.connectStomp(_roomId!, (msg) {
+              print("msg $msg");
+              setState(() {
+                messages.add({
+                  "text": msg["message"],
+                  "isUser": msg["sender"] == loginUser
+                });
+              });
+            });
+          });
+        } else {
+          /*
+          3. 오늘 처음 문의하는 거라면 (roomId가없다면) 버튼만 보여주고 대기
+           */
+          setState(() {
+            messages = [
+              {
+                "text": "문의 사항을 선택해주세요.",
+                "buttons": ["예약 현황 확인", "상담사와 연결하기"],
+                "isUser": false
+              }
+            ];
+          });
+        }
+      });
+    });
+  }
+
+      void handleUserSelection(String requestType) {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final sender = authProvider.userName;
+        final roomId = _chatService.generateRoomId(sender!);
+        setState(() {
+          messages.add({"text": requestType, "isUser": true});
+        });
+
+        if (requestType == "예약 현황 확인") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => BookingPage()),
+          );
+          return;
+        }
+
+        if (requestType == "상담사와 연결하기") {
+          setState(() {
+            messages.add({
+              "text": "상담사와 연결중입니다. 내용을 입력해주세요.",
+              "isUser": false
+            });
+            isChatInputVisible = true;
+          });
+
+          _chatService.connectStomp(roomId, (msg) {
+            setState(() {
+              messages.add({
+                "text": msg["message"],
+                "isUser": msg["sender"] == sender
+              });
+            });
+          });
+          return;
+        }
       }
 
-      _chatService.sendChatMessage(sender, message);
-      setState(() {
-        messages.add({"text": message, "isUser":true});
-      });
-    }
+      void handleMessageSend(String message) {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final sender = authProvider.userName;
+        if(_roomId! == null){
+          _roomId = _chatService.generateRoomId(sender!);
+        }
+        if (sender == null) {
+          print("로그인된 유저x");
+          return;
+        }
+        _chatService.sendStompMessage(_roomId!, sender, message);
 
+      }
   @override
   Widget build(BuildContext context) {
     return Scaffold(

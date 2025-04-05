@@ -157,6 +157,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                                   MaterialPageRoute(
                                       builder: (context) => ChatPage(
                                           chatRoom: ChatRoom(
+                                              roomId: "",
                                               userName: authProvider.userName ?? 'Unknown',
                                               lastMessage: "",
                                               lastTimestamp: DateTime.now().toString(),
