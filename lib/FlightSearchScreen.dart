@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:airline/ChatService.dart';
 import 'package:airline/FlightSchedulePage.dart';
 import 'package:airline/models/ChatRoom.dart';
 import 'package:airline/providers/auth_provider.dart';
@@ -26,7 +27,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   DateTime? departureDate;
   DateTime? returnDate;
   int passengers = 1;
-
+  int _unreadCount = 0;
   List<Map<String, dynamic>> airports = [];
   List<String> cities = [];
   List<String> arrivalCities = [];
@@ -35,6 +36,16 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   void initState() {
     super.initState();
     fetchAirports();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final isAdmin = authProvider.isAdmin();
+      final userName = authProvider.userName ?? "Unknown";
+      
+      final count = await ChatService().getUnreadCount(userName);
+      setState(() {
+        _unreadCount = count;
+      });
+    });
   }
 
   Future<void> fetchAirports() async {
@@ -139,7 +150,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      Row(
+                      Stack(
                         children: [
                           IconButton(icon: const Icon(Icons.support_agent, size: 28),
                             onPressed: () {
@@ -163,11 +174,25 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                                               lastTimestamp: DateTime.now().toString(),
                                           ),
                                       ),
-                                    ),
-                                );
+                                    ));
                               }
                             },
-                          )
+                          ),
+                          if(_unreadCount > 0)
+                            Positioned(
+                                right: 4,
+                                top: 4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '$_unreadCount',
+                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  ),
+                                ))
                         ],
                       ),
                     ],

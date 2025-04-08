@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:airline/config/Config.dart';
+import 'package:airline/utils/secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:stomp_dart_client/stomp.dart';
@@ -10,7 +11,7 @@ import 'models/ChatRoom.dart';
 
 class ChatService {
   final String serverUrl = "${Config.baseUrl}/chat";
-
+  final _secureStorage = SecureStorage();
     StompClient? stompClient;
     Function(Map<String, dynamic>)? onMessageReceived;
 
@@ -55,7 +56,8 @@ class ChatService {
         "roomId": roomId,
         "sender": sender,
         "message": message,
-        "timestamp": DateTime.now().toIso8601String()
+        "timestamp": DateTime.now().toIso8601String(),
+        "unread": true
       };
       stompClient?.send(destination: "/app/chat.sendMessage", body: jsonEncode(msg));
   }
@@ -85,26 +87,36 @@ class ChatService {
 
     Future<List<Map<String, dynamic>>> getMessagesForRoom(String roomId) async {
       final response = await http.get(Uri.parse("$serverUrl/messages/$roomId"));
+      // todo 채팅을 읽어오면 unread를 업데이트 해줘야함
       print("response $response");
       if(response.statusCode == 200){
         final List<dynamic> jsonList = jsonDecode(response.body);
-        print("여기오나?");
         return jsonList.cast<Map<String, dynamic>>();
       } else {
         throw Exception("채팅 메시지를 불러오지 못했습니다.");
       }
     }
 
-    static Stream<int> getUnreadChatCountStream() async* {
-      while(true){
-        final response = await http.get(Uri.parse("${Config.baseUrl}/unreadCount"));
-        if(response.statusCode == 200){
-          yield int.parse(response.body);
-        } else {
-          yield 0;
-        }
-        await Future.delayed(Duration(seconds: 2));
+    Future<int> getUnreadCount(String userName) async {
+      // todo sender가 상대방이면서 내가 unread한 메시지의 개수를 가져와야함
+      final token = await _secureStorage.getToken();
+      final roomId = generateRoomId(userName);
+      final uri = Uri.parse('${Config.baseUrl}/chat/unread/count?roomId=$roomId');
+
+      final response = await http.get(
+          uri,
+          headers: {
+            'Authorization' : 'Bearer $token',
+            'Content-Type': 'applicaation/json',
+          });
+
+      if(response.statusCode == 200){
+        final body = jsonDecode(response.body);
+        return body['count'] ?? 0;
+      } else {
+        throw Exception("Failed to load unread count");
       }
+
     }
 
   Future<bool> checkRoomExists(String roomId) async {
