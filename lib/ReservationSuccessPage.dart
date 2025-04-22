@@ -1,4 +1,6 @@
 
+import 'dart:typed_data';
+
 import 'package:airline/FlightSearchScreen.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +10,7 @@ class ReservationSuccessPage extends StatelessWidget {
   final String destination;
   // final String? stayPeriod;
   final double price;
+  final Uint8List qrBytes;
 
   const ReservationSuccessPage({
         super.key,
@@ -15,6 +18,7 @@ class ReservationSuccessPage extends StatelessWidget {
         required this.departure,
         required this.destination,
         required this.price,
+        required this.qrBytes,
       });
 
   @override
@@ -85,7 +89,21 @@ class ReservationSuccessPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // const Spacer(),
+              if(qrBytes.isNotEmpty) ...[
+                const Text(
+                  "항공권 QR 코드",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Image.memory(
+                  qrBytes,
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                ),
+              ],
+
+              const SizedBox(height: 20),
 
                 ElevatedButton(
                   onPressed: () {

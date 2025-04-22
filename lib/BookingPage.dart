@@ -1,3 +1,4 @@
+import 'package:airline/pages/BookingDetailPage.dart';
 import 'package:airline/services/booking_service.dart';
 import 'package:flutter/material.dart';
 
@@ -87,6 +88,24 @@ class _BookingPageState extends State<BookingPage> {
                             Text("예약 상태: ${booking.orderStatus}"),
                           ],
                         ),
+                        onTap: () async {
+                          final qrBytes = await BookingService.fetchQrCode(booking.tossOrderId);
+                          if(qrBytes != null){
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => BookingDetailPage(
+                                        booking: booking,
+                                        qrBytes: qrBytes,
+                                    ),
+                                ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('QR코드를 가져오는 데 실패했습니다.')),
+                            );
+                          }
+                        },
                       ),
                     );
                   }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:airline/ReservationFailurePage.dart';
 import 'package:airline/ReservationSuccessPage.dart';
 import 'package:airline/utils/secure_storage.dart';
@@ -69,6 +70,9 @@ class PaymentService {
 
 
     if(response.statusCode == 200){
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final String qrBase64 = data['qrCodeBase64'];
+      final Uint8List qrBytes = base64Decode(qrBase64);
       print("✅ 결제 승인 완료: ${response.body}");
       Navigator.push(
           context,
@@ -78,6 +82,7 @@ class PaymentService {
                 departure: departureAirport,
                 destination : arrivalAirport,
                 price: totalPrice,
+                qrBytes: qrBytes,
               ),
           ),
       );
