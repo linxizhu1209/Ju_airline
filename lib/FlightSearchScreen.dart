@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:airline/ChatService.dart';
 import 'package:airline/FlightSchedulePage.dart';
 import 'package:airline/models/ChatRoom.dart';
+import 'package:airline/pages/QRScanPage.dart';
 import 'package:airline/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -150,9 +151,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      Stack(
+                      Row(
                         children: [
-                          IconButton(icon: const Icon(Icons.support_agent, size: 28),
+                          IconButton(
+                            icon: const Icon(Icons.support_agent, size: 28),
                             onPressed: () {
                               final authProvider = Provider.of<AuthProvider>(context, listen: false);
                               print("userName ${authProvider.userName}");
@@ -192,7 +194,25 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                                     '$_unreadCount',
                                     style: const TextStyle(color: Colors.white, fontSize: 12),
                                   ),
-                                ))
+                                )),
+                          const SizedBox(width: 8),
+                          Builder(
+                              builder: (context) {
+                                final authProvider = Provider.of<AuthProvider>(context,listen:  false);
+                                if(authProvider.isAdmin()){
+                                  return IconButton(
+                                      icon: const Icon(Icons.qr_code_scanner, size: 28),
+                                      onPressed: (){
+                                        Navigator.push(
+                                            context, 
+                                            MaterialPageRoute(builder: (context) => const QRScanPage()),
+                                        );
+                                      },
+                                  );
+                                } else {
+                                  return Container();
+                                }
+                              })
                         ],
                       ),
                     ],
