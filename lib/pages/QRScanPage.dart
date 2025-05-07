@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:airline/services/qr_service.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:http/http.dart' as http;
@@ -32,47 +33,7 @@ class _QRScanPageState extends State<QRScanPage> {
       final scannedCode = scanData.code;
       print("스캔된 qr 데이터: $scannedCode");
 
-      try {
-        final response = await http.post(
-          Uri.parse("${Config.baseUrl}/api/qr/decode"),
-          headers: {"Content-Type" : "application/json"},
-          body : jsonEncode({
-            "encryptedData": scannedCode,
-          })
-        );
-
-        if(response.statusCode == 200){
-          final responseData = jsonDecode(response.body);
-          final reservationId = responseData['reservationId'];
-          print("복호화 성공! 예약번호: $reservationId");
-
-          showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text('예약 확인'),
-                content: Text('예약번호: $reservationId'),
-                actions: [
-                  TextButton(
-                      onPressed: (){
-                        Navigator.pop(context);
-                      },
-                      child: const Text('확인'),
-                  ),
-                ],
-              ),
-          );
-        } else {
-          print("복호화 실패 : ${response.body}");
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('qr 복호화 실패')),
-          );
-        }
-      } catch (e) {
-        print("네트워크 오류 : $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('네트워크 오류')),
-        );
-      }
+      await QrService.decodeQrAndHandleResult(context, scannedCode!);
 
       _isProcessing = false;
     });
