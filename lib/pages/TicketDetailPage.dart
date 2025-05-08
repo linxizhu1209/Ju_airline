@@ -1,6 +1,14 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:airline/services/ticket_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:ui' as ui;
+
+import 'package:share_plus/share_plus.dart';
 
 class TicketDetailPage extends StatefulWidget {
   final String reservationId;
@@ -15,7 +23,7 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
   Map<String, dynamic>? ticketData;
   bool qrExpired = false;
   bool isLoading = true;
-
+  final GlobalKey _captureKey = GlobalKey();
 
   @override
   void initState() {
@@ -74,103 +82,106 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            if(ticketData?['userImageUrl'] != null ) ...[
-              CircleAvatar(
-                backgroundImage: NetworkImage(ticketData!['userImageUrl']),
-                radius: 40,
-              ),
-              const SizedBox(height: 8),
-            ],
-            Text(
-              ticketData!['reservationCode'],
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(children: [
-                  Text(ticketData!['departureAirport']),
-                  const Icon(Icons.flight_takeoff, size: 32),
-                ]),
-                const SizedBox(width: 32),
-                Column(children: [
-                  Text(ticketData!['arrivalAirport']),
-                  const Icon(Icons.flight_land, size: 32),
-                ]),
+      body: RepaintBoundary(
+        key: _captureKey,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              if(ticketData?['userImageUrl'] != null ) ...[
+                CircleAvatar(
+                  backgroundImage: NetworkImage(ticketData!['userImageUrl']),
+                  radius: 40,
+                ),
+                const SizedBox(height: 8),
               ],
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.purple.shade50,
-                borderRadius: BorderRadius.circular(16),
+              Text(
+                ticketData!['reservationCode'],
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
-              child: Column(
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _infoRow('편명', ticketData!['flightNumber']),
-                  _infoRow('탑승일', ticketData!['departureDate']),
-                  _infoRow('탑승구', ticketData!['gateNumber']),
-                  _infoRow('탑승시간', ticketData!['boardingTime']),
-                  _infoRow('좌석번호', ticketData!['seatNumber']),
-                  _infoRow('탑승순서', ticketData!['boardingZone']),
+                  Column(children: [
+                    Text(ticketData!['departureAirport']),
+                    const Icon(Icons.flight_takeoff, size: 32),
+                  ]),
+                  const SizedBox(width: 32),
+                  Column(children: [
+                    Text(ticketData!['arrivalAirport']),
+                    const Icon(Icons.flight_land, size: 32),
+                  ]),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Opacity(
-                  opacity: qrExpired ? 0.3 : 1.0,
-                  child: QrImageView(
-                    data: widget.reservationId,
-                    version: QrVersions.auto,
-                    size: 200.0,
-                  ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                if(qrExpired)
-                  const Positioned(
-                    child: Text(
-                      'QR 만료됨',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
+                child: Column(
+                  children: [
+                    _infoRow('편명', ticketData!['flightNumber']),
+                    _infoRow('탑승일', ticketData!['departureDate']),
+                    _infoRow('탑승구', ticketData!['gateNumber']),
+                    _infoRow('탑승시간', ticketData!['boardingTime']),
+                    _infoRow('좌석번호', ticketData!['seatNumber']),
+                    _infoRow('탑승순서', ticketData!['boardingZone']),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Opacity(
+                    opacity: qrExpired ? 0.3 : 1.0,
+                    child: QrImageView(
+                      data: widget.reservationId,
+                      version: QrVersions.auto,
+                      size: 200.0,
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _shareTicket,
-                  icon: const Icon(Icons.share),
-                  label: const Text('탑승권 공유하기'),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple
+                  if(qrExpired)
+                    const Positioned(
+                      child: Text(
+                        'QR 만료됨',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _shareTicket,
+                    icon: const Icon(Icons.share),
+                    label: const Text('탑승권 공유하기'),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple
+                    ),
                   ),
-                ),
-                ElevatedButton(
-                  onPressed: _refreshQrCode,
-                  child: const Text('새로고침'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.shade100,
+                  ElevatedButton(
+                    onPressed: _refreshQrCode,
+                    child: const Text('새로고침'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple.shade100,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
+                ],
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
@@ -189,9 +200,22 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
     );
   }
 
-  void _shareTicket() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('공유 기능은 준비중입니다!')),
-    );
+  Future<void> _shareTicket() async {
+    try {
+      RenderRepaintBoundary boundary = _captureKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/ticket.png').create();
+      await file.writeAsBytes(pngBytes);
+      await Share.shareXFiles([XFile(file.path)], text: '탑승권을 확인하세요!');
+    } catch (e) {
+      print('공유실패 : $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공유에 실패했습니다.')),
+      );
+    }
   }
 }
