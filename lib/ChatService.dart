@@ -15,24 +15,37 @@ class ChatService {
     StompClient? stompClient;
     Function(Map<String, dynamic>)? onMessageReceived;
 
-    void connectStomp(String roomId, Function(Map<String, dynamic>) onMessage) {
-      stompClient = StompClient(
-      config: StompConfig(
-      url: 'ws://10.0.2.2:8081/ws-chat',
-      onConnect: (StompFrame frame){
-        print("Stomp connected");
+    Future<void> connectStomp(String roomId, Function(Map<String, dynamic>) onMessage) async {
 
-        print("🔎 구독 destination: /topic/chat/$roomId");
-        stompClient!.subscribe(
-          destination: "/topic/chat.room_$roomId",
-          callback: (StompFrame frame) {
-            if(frame.body != null){
-              final message = jsonDecode(frame.body!);
-              onMessage(message);
-            }
-          },
-        );
-      },
+      final token = await _secureStorage.getToken();
+
+      stompClient = StompClient(
+        config: StompConfig(
+        url: 'ws://10.0.2.2:8081/ws-chat',
+        beforeConnect: () async {
+          final token = await _secureStorage.getToken();
+          print("연결 전 토큰: $token");
+        },
+        stompConnectHeaders: {
+          'token' : token ?? '',
+        },
+        webSocketConnectHeaders: {
+          "token": token, // 중요!
+        },
+        onConnect: (StompFrame frame){
+          print("Stomp connected");
+
+          print("🔎 구독 destination: /topic/chat/$roomId");
+          stompClient!.subscribe(
+            destination: "/topic/chat.room_$roomId",
+            callback: (StompFrame frame) {
+              if(frame.body != null){
+                final message = jsonDecode(frame.body!);
+                onMessage(message);
+              }
+            },
+          );
+        },
         onWebSocketError: (dynamic error) => print("❌ WebSocket Error: $error"),
         onStompError: (StompFrame frame) {
           print("❌ STOMP Error:");
@@ -49,7 +62,9 @@ class ChatService {
       stompClient!.activate();
   }
 
-  void sendStompMessage(String roomId, String sender, String message){
+  Future<void> sendStompMessage(String roomId, String sender, String message) async {
+      final token = await _secureStorage.getToken();
+
       print("roomId $roomId");
       print("sender $sender");
       final msg = {
@@ -57,7 +72,8 @@ class ChatService {
         "sender": sender,
         "message": message,
         "timestamp": DateTime.now().toIso8601String(),
-        "unread": true
+        "unread": true,
+        "token" : token
       };
       stompClient?.send(destination: "/app/chat.sendMessage", body: jsonEncode(msg));
   }
@@ -86,8 +102,12 @@ class ChatService {
     }
 
     Future<List<Map<String, dynamic>>> getMessagesForRoom(String roomId) async {
-      final response = await http.get(Uri.parse("$serverUrl/messages/$roomId"));
-      // todo 채팅을 읽어오면 unread를 업데이트 해줘야함
+      final token = await _secureStorage.getToken();
+      final response = await http.get(
+          Uri.parse("$serverUrl/messages/$roomId"),
+          headers: {
+            'Authorization' : 'Bearer $token',
+          });
       print("response $response");
       if(response.statusCode == 200){
         final List<dynamic> jsonList = jsonDecode(response.body);

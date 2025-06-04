@@ -122,7 +122,7 @@ class _ChatPageState extends State<ChatPage> {
         }
       }
 
-      void handleMessageSend(String message) {
+      Future<void> handleMessageSend(String message) async {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         final sender = authProvider.userName;
         if(_roomId! == null){
@@ -132,7 +132,7 @@ class _ChatPageState extends State<ChatPage> {
           print("로그인된 유저x");
           return;
         }
-        _chatService.sendStompMessage(_roomId!, sender, message);
+        await _chatService.sendStompMessage(_roomId!, sender, message);
 
       }
   @override

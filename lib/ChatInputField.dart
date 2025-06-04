@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class ChatInputField extends StatelessWidget {
 
-  final void Function(String) onSend;
+  final Future<void> Function(String message) onSend;
 
   ChatInputField({required this.onSend});
 
@@ -33,9 +33,9 @@ class ChatInputField extends StatelessWidget {
             ),
             IconButton(
                 icon: Icon(Icons.send),
-                onPressed: (){
+                onPressed: () async {
                   if(_controller.text.isNotEmpty){
-                    onSend(_controller.text);
+                    await onSend(_controller.text);
                     _controller.clear();
                   }
                 },
