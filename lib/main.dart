@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:airline/BaseScreen.dart';
+import 'package:airline/pages/BaseScreen.dart';
 import 'package:airline/FlightSearchScreen.dart';
 import 'package:airline/ReservationLookupScreen.dart';
 import 'package:airline/login_service.dart';
@@ -54,7 +54,7 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: BaseScreen(selectedIndex: 0),
+      home: BaseScreen(selectedIndex: 2),
     );
   }
 }

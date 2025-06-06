@@ -7,7 +7,7 @@ import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
 import 'package:stomp_dart_client/stomp_frame.dart';
 
-import 'models/ChatRoom.dart';
+import '../models/ChatRoom.dart';
 
 class ChatService {
   final String serverUrl = "${Config.baseUrl}/chat";
