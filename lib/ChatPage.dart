@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 
-import 'ChatService.dart';
+import 'services/ChatService.dart';
 import 'models/ChatRoom.dart';
 
 class ChatPage extends StatefulWidget {

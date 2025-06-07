@@ -1,8 +1,12 @@
 import 'dart:math';
 
+import 'package:airline/pages/OpenChatRoomPage.dart';
 import 'package:airline/services/ChatService.dart';
 import 'package:airline/services/open_chat_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/auth_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,7 +23,12 @@ class _HomePageState extends State<HomePage>{
   @override
   void initState() {
     super.initState();
-    _loadChatRooms();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final nickname = Provider
+          .of<AuthProvider>(context, listen: false)
+          .userName;
+      _loadChatRooms();
+    });
   }
 
   Future<void> _loadChatRooms() async {
@@ -93,7 +102,16 @@ class _HomePageState extends State<HomePage>{
                         final room = chatRooms[i];
                         return GestureDetector(
                           onTap: () {
-                            // TODO: 채팅방 입장 로직
+                            final nickname = Provider.of<AuthProvider>(context, listen: false).userName;
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => OpenChatRoomPage(
+                                        roomId: room['id'],
+                                        myNickname: nickname!,
+                                    ),
+                                ),
+                            );
                           },
                           child: Container(
                             decoration: BoxDecoration(

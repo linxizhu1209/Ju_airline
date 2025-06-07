@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:airline/ChatService.dart';
+import 'package:airline/services/ChatService.dart';
 import 'package:airline/FlightSchedulePage.dart';
 import 'package:airline/models/ChatRoom.dart';
 import 'package:airline/pages/QRScanPage.dart';
