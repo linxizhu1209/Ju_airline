@@ -1,10 +1,6 @@
-import 'package:airline/providers/auth_provider.dart';
 import 'package:airline/services/open_chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-
-import '../utils/secure_storage.dart';
 
 class OpenChatRoomPage extends StatefulWidget {
   final String roomId;
@@ -101,7 +97,6 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
       content: text,
       type: "TALK",
     );
-    _addMessage(message);
     _controller.clear();
   }
 

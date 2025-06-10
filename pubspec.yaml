@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   intl: ^0.18.0
-  http: ^0.13.3
+  http: ^1.3.0
   app_links: ^6.4.0
   flutter_appauth: ^8.0.3
   webview_flutter: ^4.7.0
@@ -47,10 +47,15 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   google_sign_in : ^6.1.4
+  kakao_flutter_sdk_user: ^1.4.3
   flutter_dotenv: ^5.2.1
   flutter_secure_storage: ^8.0.0  # 보안성이 필요한 데이터를 저장할 때 사용하는 라이브러리
   provider: ^6.0.5
   stomp_dart_client: ^0.4.4
+  qr_code_scanner: ^1.0.1
+  qr_flutter: ^4.0.0
+  share_plus: ^7.2.1
+  path_provider: ^2.1.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -63,6 +68,10 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^4.0.0
+
+dependency_overrides:
+  qr_code_scanner:
+    path: packages/qr_code_scanner
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -81,6 +90,8 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - .env
+    - assets/images/google_icon.png
+    - assets/images/kakao_icon.png
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

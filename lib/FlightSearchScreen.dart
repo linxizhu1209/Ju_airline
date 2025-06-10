@@ -1,17 +1,14 @@
 import 'dart:convert';
-import 'package:airline/services/ChatService.dart';
+
 import 'package:airline/FlightSchedulePage.dart';
-import 'package:airline/models/ChatRoom.dart';
 import 'package:airline/pages/QRScanPage.dart';
 import 'package:airline/providers/auth_provider.dart';
+import 'package:airline/services/ChatService.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import 'ChatListPage.dart';
-import 'ChatPage.dart';
 import 'config/Config.dart';
 
 class FlightSearchScreen extends StatefulWidget {
@@ -153,48 +150,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                       ),
                       Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.support_agent, size: 28),
-                            onPressed: () {
-                              final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                              print("userName ${authProvider.userName}");
-                              print("userinfo ${authProvider.userRole}");
-                              if(authProvider.isAdmin()){
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context)=> ChatListPage()),
-                                );
-                              } else {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => ChatPage(
-                                          chatRoom: ChatRoom(
-                                              roomId: "",
-                                              userName: authProvider.userName ?? 'Unknown',
-                                              lastMessage: "",
-                                              lastTimestamp: DateTime.now().toString(),
-                                          ),
-                                      ),
-                                    ));
-                              }
-                            },
-                          ),
-                          if(_unreadCount > 0)
-                            Positioned(
-                                right: 4,
-                                top: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    '$_unreadCount',
-                                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                                  ),
-                                )),
                           const SizedBox(width: 8),
                           Builder(
                               builder: (context) {
