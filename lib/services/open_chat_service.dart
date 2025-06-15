@@ -48,9 +48,10 @@ class OpenChatService {
   Future<List<Map<String, dynamic>>> fetchMessagesSince({
     required String roomId,
     required String since,
+    required String username
   }) async {
     final response = await http.get(Uri.parse(
-        "$serverUrl/$roomId/messages?since=$since"
+        "$serverUrl/$roomId/messages?since=$since&username=$username"
     ));
 
     if (response.statusCode == 200) {
@@ -64,39 +65,60 @@ class OpenChatService {
   Future<void> connect({
     required String roomId,
     required String nickname,
-    required void Function(Map<String, dynamic> message) onMessageReceived,
+    required void Function(Map<String, dynamic> message) onNewMessage,
+    required void Function(String messageId, int updatedCount) onUnreadCountUpdated,
   }) async {
-    final token = await _secureStorage.getToken();
     stompClient = StompClient(
-        config: StompConfig.SockJS(
-            url: "${Config.baseUrl}/ws-chat",
-            onConnect: (StompFrame frame) {
-              print("Stomp 연결됨 : $frame");
-              stompClient?.subscribe(
-                  destination: '/topic/chat.room.$roomId',
-                  callback: (frame) {
-                    print("메시지 수신 : ${frame.body}");
-                    if(frame.body != null){
-                      final msg = jsonDecode(frame.body!);
-                      onMessageReceived(msg);
-                    }
-                  },
-              );
+      config: StompConfig.SockJS(
+        url: "${Config.baseUrl}/ws-chat",
+        onConnect: (StompFrame frame) {
+          print("Stomp 연결됨 : $frame");
 
-              sendMessage(
-                roomId: roomId,
-                nickname: nickname,
-                content: "$nickname님이 입장했습니다.",
-                type: "ENTER",
-              );
+          stompClient?.subscribe(
+            destination: '/topic/chat.room.$roomId',
+            callback: (frame) async {
+              if (frame.body != null) {
+                final msg = jsonDecode(frame.body!);
+
+                if (msg['type'] == 'TALK') {
+                  onNewMessage(msg); // 메시지 UI에 추가
+                  // 내가 보낸 메시지가 아니라면 → 읽음 처리
+                  if (msg['sender'] != nickname) {
+                    await markMessageAsRead(
+                      roomId: roomId,
+                      messageId: msg['id'],
+                      username: nickname,
+                    );
+
+                    // 서버에서 unreadCount 가져오기
+                    final count = await fetchUnreadCount(roomId, msg['id']);
+                    onUnreadCountUpdated(msg['id'], count);
+                  }
+                }
+
+                else if (msg['type'] == 'READ') {
+                  final count = await fetchUnreadCount(roomId, msg['messageId']);
+                  onUnreadCountUpdated(msg['messageId'], count);
+                }
+              }
             },
-            onWebSocketError: (dynamic error) => print('WebSocket 오류: $error'),
-            onStompError: (frame) => print("stomp 오류 : ${frame.body}"),
-            onDisconnect: (frame) => print("연결 종료 : $frame"),
-          ),
-        );
-      stompClient?.activate();
-    }
+          );
+
+          sendMessage(
+            roomId: roomId,
+            nickname: nickname,
+            content: "$nickname님이 입장했습니다.",
+            type: "ENTER",
+          );
+        },
+        onWebSocketError: (dynamic error) => print('WebSocket 오류: $error'),
+        onStompError: (frame) => print("STOMP 오류: ${frame.body}"),
+        onDisconnect: (frame) => print("연결 종료: $frame"),
+      ),
+    );
+
+    stompClient?.activate();
+  }
 
     void sendMessage({
       required String roomId,
@@ -122,4 +144,70 @@ class OpenChatService {
   void disconnect(){
     stompClient?.deactivate();
   }
+
+  Future<int> fetchUnreadCount(String roomId, String messageId) async {
+    final token = await _secureStorage.getToken();
+    final response = await http.get(
+      Uri.parse("${Config.baseUrl}/open-chat/unread-count?roomId=$roomId&messageId=$messageId"),
+      headers: {
+        'Authorization' : 'Bearer $token',
+      },
+    );
+
+    if(response.statusCode == 200){
+      return int.tryParse(response.body) ?? 0;
+    } else {
+      print("unreadcount 로드 실패: ${response.statusCode}");
+      return 0;
+    }
+  }
+  
+  Future<String?> fetchLastReadMessageId(String roomId, String username) async {
+    final response = await http.get(
+      Uri.parse('$serverUrl/$roomId/last-read?username=$username'),
+    );
+    if(response.statusCode == 200){
+      return utf8.decode(response.bodyBytes);
+    }
+    return null;
+  }
+
+  Future<void> markMessageAsRead({
+    required String roomId,
+    required String messageId,
+    required String username,
+}) async {
+    final response = await http.post(
+      Uri.parse("$serverUrl/read"),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'roomId':roomId,
+        'messageId': messageId,
+        'username': username,
+      }),
+    );
+
+    if(response.statusCode != 200){
+      print("읽음 처리 실패: ${response.statusCode}");
+    }
+  }
+
+  void sendReadNotification({
+    required String roomId,
+    required String messageId,
+    required String username,
+}) {
+    final msg = {
+      'roomId': roomId,
+      'id': messageId,
+      'sender': username,
+      'type': 'READ'
+    };
+
+    stompClient?.send(
+      destination: '/app/open-chat.readMessage',
+      body: jsonEncode(msg),
+    );
+  }
+
 }

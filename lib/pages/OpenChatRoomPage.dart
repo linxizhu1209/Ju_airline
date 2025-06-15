@@ -24,16 +24,12 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
     super.initState();
     _chatService = OpenChatService();
     _initializeRoom();
+  }
 
-
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _addMessage({
-    //     "sender": widget.myNickname,
-    //     "content": "${widget.myNickname}님이 입장했습니다.",
-    //     "sendAt": DateTime.now().toIso8601String(),
-    //     "type": "ENTER",
-    //   });
-    // });
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeRoom() async {
@@ -47,34 +43,101 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
     await _chatService.connect(
       roomId: widget.roomId,
       nickname: widget.myNickname,
-      onMessageReceived: (msg) {
-        _addMessage(msg);
+      onNewMessage: (msg) {
+        setState(() {
+          _addMessage(msg);
+        });
+      },
+      onUnreadCountUpdated: (messageId, updatedCount) {
+        final index = messages.indexWhere((m) => m['id'] == messageId);
+        if (!mounted) return;
+        if (index != -1) {
+          setState(() {
+            messages[index]['unreadCount'] = updatedCount;
+          });
+        }
       },
     );
 
     if(!isFirstJoin){
+      final lastReadMessageId = await _chatService.fetchLastReadMessageId(widget.roomId, widget.myNickname);
+      print("lastRead $lastReadMessageId");
       final messagesSince = await _chatService.fetchMessagesSince(
         roomId: widget.roomId,
         since: participant['joinedAt'],
+        username: widget.myNickname
       );
-      for(final msg in messagesSince){
-        _addMessage(msg);
+
+
+      int focusIndex = 0;
+      for (int i=0; i< messagesSince.length; i++){
+        _addMessage(messagesSince[i]);
+        if(messagesSince[i]['id'] == lastReadMessageId){
+          focusIndex = i + 1;
+        }
+
+        if (
+        messagesSince[i]['sender'] != widget.myNickname &&
+            (messagesSince[i]['unreadCount'] ?? 0) > 0
+        ) {
+          _chatService.sendReadNotification(
+            roomId: widget.roomId,
+            messageId: messagesSince[i]['id'],
+            username: widget.myNickname,
+          );
+        }
       }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final scrollTarget = (focusIndex * 80.0).clamp(
+          0.0,
+          _scrollController.position.maxScrollExtent,
+        );
+        _scrollController.animateTo(
+          scrollTarget,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      });
     }
 
-    if(isFirstJoin){
-      _chatService.sendMessage(
+      if(isFirstJoin){
+        _chatService.sendMessage(
           roomId: widget.roomId,
           nickname: widget.myNickname,
           content: "${widget.myNickname}님이 입장했습니다.",
           type: "ENTER",
-      );
-    }
+        );
+      }
   }
-  void _addMessage(Map<String, dynamic> message) {
+
+  Future<void> _addMessage(Map<String, dynamic> message) async {
     setState(() {
       messages.add(message);
     });
+
+    if (message['type'] == 'TALK') {
+      final index = messages.length - 1;
+
+      // 내가 보낸 메시지가 아니라면 읽음 처리
+      if (message['sender'] != widget.myNickname) {
+        await _chatService.markMessageAsRead(
+          roomId: widget.roomId,
+          messageId: message['id'],
+          username: widget.myNickname,
+        );
+      }
+
+      // 💡 모든 메시지에 대해 unreadCount 조회 (내가 보낸 메시지 포함)
+      final count = await _chatService.fetchUnreadCount(
+        widget.roomId,
+        message['id'],
+      );
+      setState(() {
+        messages[index]['unreadCount'] = count;
+      });
+    }
 
     Future.delayed(Duration(milliseconds: 100), (){
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -104,6 +167,7 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
     final isMine = msg['sender'] == widget.myNickname;
     final type = msg['type'];
     final time = DateFormat('HH:mm').format(DateTime.parse(msg['sendAt']));
+    final unreadCount = msg['unreadCount'] ?? 0;
 
     if(type == 'ENTER'){
       return Center(
@@ -140,13 +204,48 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
             SizedBox(height: 4),
             Text(msg['content'], style: TextStyle(fontSize: 15)),
             SizedBox(height: 4),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(
-                time,
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-              ),
-            )
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: isMine
+                  ? [
+
+                    if (unreadCount > 0)
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          "$unreadCount",
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                      Text(
+                        time,
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      )
+                  ]
+                : [
+                  Text(
+                    time,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                  if (unreadCount > 0)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        "$unreadCount",
+                        style: TextStyle(color: Colors.white, fontSize: 10),
+                      ),
+                    ),
+
+            ],
+            ),
           ],
         ),
       ),
