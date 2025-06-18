@@ -2,6 +2,8 @@
 import 'dart:typed_data';
 
 import 'package:airline/FlightSearchScreen.dart';
+import 'package:airline/pages/BaseScreen.dart';
+import 'package:airline/pages/HomePage.dart';
 import 'package:flutter/material.dart';
 
 class ReservationSuccessPage extends StatelessWidget {
@@ -110,7 +112,7 @@ class ReservationSuccessPage extends StatelessWidget {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const FlightSearchScreen()),
+                          builder: (context) => BaseScreen(selectedIndex: 2)),
                           (Route<dynamic> route) => false,
                     );
                   },

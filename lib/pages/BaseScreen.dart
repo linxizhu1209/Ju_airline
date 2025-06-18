@@ -4,12 +4,14 @@ import 'package:airline/FlightSearchScreen.dart';
 import 'package:airline/LoginPage.dart';
 import 'package:airline/NoticePage.dart';
 import 'package:airline/main.dart';
+import 'package:airline/pages/BookingDetailPage.dart';
 import 'package:airline/pages/HomePage.dart';
 import 'package:airline/providers/auth_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../BookingPage.dart';
 import '../models/ChatRoom.dart';
 
 class BaseScreen extends StatefulWidget {
@@ -27,7 +29,7 @@ class _BaseScreenState extends State<BaseScreen> {
     FlightSearchScreen(),
     LoginPage(),
     HomePage(),
-    NoticePage(),
+    BookingPage(),
     Placeholder(), // 예비 자리
   ];
 
@@ -85,34 +87,13 @@ class _BaseScreenState extends State<BaseScreen> {
             BottomNavigationBarItem(
                 icon: Icon(Icons.home), label: '홈'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.notifications),
-                label: '공지사항',
+                icon: Icon(	Icons.event_note),
+                label: '예약현황',
             ),
             BottomNavigationBarItem(
                 icon: Stack(
                   children: [
                     Icon(Icons.support_agent),
-                    // if(_unreadCount > 0)
-                    //   Positioned(
-                    //       right: 0,
-                    //       top: 0,
-                    //       child: Container(
-                    //         padding: const EdgeInsets.all(2),
-                    //         decoration: const BoxDecoration(
-                    //           color: Colors.red,
-                    //           shape: BoxShape.circle,
-                    //         ),
-                    //         constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    //         child: Text(
-                    //           '$_unreadCount',
-                    //           style: const TextStyle(
-                    //             color: Colors.white,
-                    //             fontSize: 10,
-                    //           ),
-                    //           textAlign: TextAlign.center,
-                    //         ),
-                    //       ),
-                    //   )
                     ],
                   ),
                 label: '문의하기')

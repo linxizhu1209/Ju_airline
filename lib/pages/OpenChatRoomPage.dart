@@ -1,6 +1,7 @@
 import 'package:airline/services/open_chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class OpenChatRoomPage extends StatefulWidget {
   final String roomId;
@@ -13,22 +14,26 @@ class OpenChatRoomPage extends StatefulWidget {
 }
 
 class _ChatRoomPageState extends State<OpenChatRoomPage> {
-
+  Map<String, GlobalKey> messageKeys = {};
   final List<Map<String, dynamic>> messages = [];
   late OpenChatService _chatService;
   final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
+  bool _isInitialLoading = true;
 
   @override
   void initState() {
     super.initState();
+    messageKeys.clear();
     _chatService = OpenChatService();
     _initializeRoom();
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _controller.dispose();
+    messageKeys.clear();
     super.dispose();
   }
 
@@ -68,14 +73,9 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
         username: widget.myNickname
       );
 
-
-      int focusIndex = 0;
       for (int i=0; i< messagesSince.length; i++){
-        _addMessage(messagesSince[i]);
-        if(messagesSince[i]['id'] == lastReadMessageId){
-          focusIndex = i + 1;
-        }
-
+        await _addMessage(messagesSince[i]);
+        
         if (
         messagesSince[i]['sender'] != widget.myNickname &&
             (messagesSince[i]['unreadCount'] ?? 0) > 0
@@ -88,17 +88,13 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
         }
       }
 
+      setState(() {});
+
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final scrollTarget = (focusIndex * 80.0).clamp(
-          0.0,
-          _scrollController.position.maxScrollExtent,
-        );
-        _scrollController.animateTo(
-          scrollTarget,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
+        Future.delayed(Duration(milliseconds: 100), (){
+          scrollToMessageId(lastReadMessageId!);
+        });
       });
     }
 
@@ -110,9 +106,20 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
           type: "ENTER",
         );
       }
+
+      _isInitialLoading = false;
   }
 
   Future<void> _addMessage(Map<String, dynamic> message) async {
+    // 메시지 200개 이상이면 앞부분 제거
+    if (messages.length > 200) {
+      final removeCount = messages.length - 200;
+      for (int i = 0; i < removeCount; i++) {
+        final messageIdToRemove = messages[i]['id'];
+        messageKeys.remove(messageIdToRemove);
+      }
+      messages.removeRange(0, removeCount);
+    }
     setState(() {
       messages.add(message);
     });
@@ -120,14 +127,13 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
     if (message['type'] == 'TALK') {
       final index = messages.length - 1;
 
-      // 내가 보낸 메시지가 아니라면 읽음 처리
-      if (message['sender'] != widget.myNickname) {
-        await _chatService.markMessageAsRead(
-          roomId: widget.roomId,
-          messageId: message['id'],
-          username: widget.myNickname,
-        );
-      }
+
+      // 내가 보낸 메시지도 마지막 읽은 메시지로 처리
+      await _chatService.markMessageAsRead(
+        roomId: widget.roomId,
+        messageId: message['id'],
+        username: widget.myNickname,
+      );
 
       // 💡 모든 메시지에 대해 unreadCount 조회 (내가 보낸 메시지 포함)
       final count = await _chatService.fetchUnreadCount(
@@ -137,11 +143,34 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
       setState(() {
         messages[index]['unreadCount'] = count;
       });
+
+
     }
 
-    Future.delayed(Duration(milliseconds: 100), (){
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    Future.delayed(Duration(milliseconds: 100), () {
+      if (!_isInitialLoading && _itemScrollController.isAttached) {
+        _itemScrollController.scrollTo(
+          index: messages.length - 1,
+          duration: Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+        );
+      }
     });
+
+  }
+
+  void scrollToMessageId(String targetId) {
+
+    final index = messages.indexWhere((m) => m['id'] == targetId);
+    print("index $index");
+    if (index != -1 && _itemScrollController.isAttached) {
+      _itemScrollController.scrollTo(
+        index: index, // 읽은 메시지 다음 메시지로 포커싱
+        duration: Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        alignment: 0.2,
+      );
+    }
   }
 
   void _sendMessage() {
@@ -162,6 +191,7 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
     );
     _controller.clear();
   }
+
 
   Widget _buildMessage(Map<String, dynamic> msg){
     final isMine = msg['sender'] == widget.myNickname;
@@ -243,7 +273,6 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
                         style: TextStyle(color: Colors.white, fontSize: 10),
                       ),
                     ),
-
             ],
             ),
           ],
@@ -264,12 +293,15 @@ class _ChatRoomPageState extends State<OpenChatRoomPage> {
       body: Column(
         children: [
           Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
+              child: ScrollablePositionedList.builder(
+                itemScrollController: _itemScrollController,
+                itemPositionsListener: _itemPositionsListener,
                 itemCount: messages.length,
                 padding: EdgeInsets.all(12),
                 itemBuilder: (context, index) {
-                  return _buildMessage(messages[index]);
+                  final msg = messages[index];
+
+                  return  _buildMessage(msg);
                 },
               ),
           ),
